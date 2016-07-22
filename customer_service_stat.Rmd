@@ -7,20 +7,123 @@ output: ioslides_presentation
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.width = 7.5, fig.height = 5.5)
+# Set global settings for markdown document
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+# Set working directory
+setwd("O:/Projects/Customer Service and Permitting/CustomerServiceSTAT/Script Development")
+
+# Load dependencies
+library(devtools)
+library(dplyr)
+library(ggplot2)
+library(grDevices)
+library(grid)
+library(gridExtra)
+library(htmlTable)
+library(readxl)
+library(RODBC)
+library(scales)
+library(tidyr)
+library(zoo)
+
+theme_opa <- function(base_size = 11, base_family = "") {
+
+    half_line <- base_size/2
+    
+    theme(
+
+        line = element_line(colour = "black", size = 0.5, linetype = 1, lineend = "butt"),
+        rect = element_rect(fill = "white", colour = "black", size = 0.5, linetype = 1),
+        text = element_text(family = base_family, face = "plain", colour = "black", size = base_size, lineheight = 0.9, hjust = 0.5, vjust = 0.5, angle = 0, margin = margin(), debug = FALSE),
+        
+        axis.line = element_line(),
+        axis.line.x = element_blank(), 
+        axis.line.y = element_blank(),
+        axis.text = element_text(size = rel(0.8), colour = "black"),
+        axis.text.x = element_text(angle = 45, margin = margin(t = 0.8 * half_line/2), hjust = 1, vjust = 1),
+        axis.text.y = element_text(margin = margin(r = 0.8 * half_line/2), hjust = 1),
+        axis.ticks = element_blank(),
+        axis.ticks.length = unit(half_line/2, "pt"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(), 
+        
+        legend.background = element_rect(colour = NA),
+        legend.margin = unit(0.2, "cm"),
+        legend.key = element_rect(colour = "white"),
+        legend.key.size = unit(1.2, "lines"), 
+        legend.key.height = NULL,
+        legend.key.width = NULL,
+        legend.text = element_text(size = rel(0.8)),
+        legend.text.align = NULL,
+        legend.title = element_text(hjust = 0), 
+        legend.title.align = NULL,
+        legend.position = "right", 
+        legend.direction = NULL,
+        legend.justification = "center", 
+        legend.box = NULL,
+        
+        panel.background = element_blank(),
+        panel.border = element_blank(),
+        panel.grid.major = element_line(colour = "black"),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(colour = "black"),
+        panel.grid.minor = element_blank(), 
+        panel.margin = unit(half_line, "pt"),
+        panel.margin.x = NULL, 
+        panel.margin.y = NULL,
+        panel.ontop = FALSE,
+        
+        strip.background = element_rect(fill = "black", colour = NA),
+        strip.text = element_text(colour = "black", size = rel(0.8)),
+        strip.text.x = element_text(margin = margin(t = half_line, b = half_line)),
+        strip.text.y = element_text(angle = -90, margin = margin(l = half_line, r = half_line)),
+        strip.switch.pad.grid = unit(0.1, "cm"),
+        strip.switch.pad.wrap = unit(0.1, "cm"),
+        plot.background = element_rect(colour = "white"), 
+        plot.title = element_text(hjust = 0, size = rel(1.2), margin = margin(b = half_line * 1.2)),
+        plot.margin = margin(half_line, half_line, half_line, half_line),
+        complete = TRUE)
+    
+}
+        
+theme_set(theme_opa())
+
+stat_colors <- colorRampPalette(c("#005983", "#72d0ff"))
 
 ```
 
-```{r}
-setwd("O:/Projects/Customer Service and Permitting/CustomerServiceSTAT/Script Development")
+## Action items
 
-library(dplyr)
-library(ggplot2)
-library(grid)
-library(gridExtra)
-library(readxl)
-library(tidyr)
-library(zoo)
+```{r action_items, results = 'asis'}
+
+# Read data
+action_items <- read_excel("action_items.xlsx")
+
+# Coerce date to character
+action_items$Assigned <- as.character(action_items$Assigned)
+
+# Insert HTML tag for line breaks
+action_items$Responsible <- gsub(";", "<br/>", action_items$Responsible)
+
+# Generate table
+htmlTable(action_items,
+          rnames = FALSE,
+          align = "rlll",
+          align.header = "rlll",
+          css.cell = "vertical-align: top; font-size: 15px; padding: 6px")
+
+```
+
+## 311
+
+---
+
+311 call volume appears to be on pace with prior years
+
+```{r call_volume_311}
 
 # Load and clean 311 performance metrics
 
@@ -35,31 +138,20 @@ internal_311 <- gather(internal_311, date, value, 3:ncol(internal_311))
 internal_311$value <- as.numeric(internal_311$value)
 internal_311$date <- as.yearmon(internal_311$date)
 
-```
+internal_311 <- internal_311 %>% filter(date >= '2014-05-01')
 
-## 311
-
----
-
-
-
-```{r}
-
-# Generate plots
+# Generate plot
 
 measure_type <- "calls"
 
 plot_data <- internal_311 %>% filter(measure == measure_type)
 
 ggplot(plot_data, aes(x = date, y = value)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon() +
+    geom_bar(stat = "identity", fill = "#005983") +
     ggtitle("311: Call volume") +
     xlab("Month") +
     ylab("Calls") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            scale_x_yearmon(breaks = plot_data$date)
+    scale_x_yearmon(breaks = plot_data$date)
 
 ```
 
@@ -67,9 +159,11 @@ Source: Office of Information Technology and Innovation
 
 ---
 
-```{r}
+Call abandonment rates have remained below two percent since October
 
-# Generate plots
+```{r abandonment_rate_311}
+
+# Generate plot
 
 measure_type <- "abandonment rate"
 
@@ -78,15 +172,12 @@ plot_data <- internal_311 %>% filter(measure == measure_type)
 target <- 8
 
 ggplot(plot_data, aes(x = date, y = value * 100)) +
-    geom_line() +
+    geom_line(size = 1.5, color = "#005983") +
     geom_line(aes(y = target), linetype = 2) +
     ggtitle("311: Call abandonment rate") +
     xlab("Month") +
     ylab("Percent") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            scale_x_yearmon(breaks = plot_data$date)
+    scale_x_yearmon(breaks = plot_data$date) + expand_limits(y = 0)
 
 ```
 
@@ -94,7 +185,11 @@ Source: Office of Information Technology and Innovation
 
 ---
 
-```{r}
+Hold times remain below 10 seconds
+
+```{r hold_time_311}
+
+# Generate plot
 
 measure_type <- "avg. hold time (sec)"
 
@@ -104,11 +199,11 @@ ggplot(plot_data, aes(x = date, y = value)) +
     geom_line() +
     xlab("Month") +
     ylab("Seconds") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            scale_x_yearmon(breaks = plot_data$date) +
-    ggtitle("311: Average hold time")
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$date) +
+    ggtitle("311: Average hold time") +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(5))
 
 ```
 
@@ -116,7 +211,11 @@ Source: Office of Information Technology and Innovation
 
 ---
 
-```{r}
+First-call resolution rates dipped below 60 percent in May
+
+```{r first_call_resolution_311}
+
+# Generate plot
 
 measure_type <- "first call resolution"
 
@@ -125,15 +224,13 @@ plot_data <- internal_311 %>% filter(measure == measure_type)
 target = 65
 
 ggplot(plot_data, aes(x = date, y = value * 100)) +
-    geom_line() +
-    geom_line(aes(y = target), linetype = 2) +
+    geom_line(size = 1.5, color = "#005983") +
     xlab("Month") +
     ylab("Percent") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            scale_x_yearmon(breaks = plot_data$date) +
-    ggtitle("311: First call resolution rate")
+    scale_x_yearmon(breaks = plot_data$date) +
+    ggtitle("311: First-call resolution rate") +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(6))
 
 ```
 
@@ -141,7 +238,9 @@ Source: Office of Information Technology and Innovation
 
 ---
 
-```{r}
+One operator had a total score below 75 in May
+
+```{r operators_311}
 
 # Load and clean operator performance metrics
 
@@ -168,7 +267,9 @@ ggplot(operators, aes(x = factor(operator, levels = 1:12), y = value, fill = met
     labs(fill = NULL) +
     xlab("Operator") +
     ylab("Score") +
-    theme(plot.title = element_text(hjust = 0))
+    theme(plot.title = element_text(hjust = 0)) +
+    scale_fill_manual(values = stat_colors(6)) +
+    theme(axis.text.x = element_text(angle = 0))
 
 ```
 
@@ -178,28 +279,39 @@ Source: Office of Information Technology and Innovation
 
 ---
 
-```{r permit_applications}
+Online permit applications have been steadily increasing
 
-permit_applications <- read_excel("permit_applications.xlsx")
+```{r sp_permit_applications}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Safety and Permits/sp_permit_applications.sql"), collapse = "\t")
+    
+# Query database
+permit_applications <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
 
 names(permit_applications) <- tolower(names(permit_applications))
 
 permit_applications <- permit_applications %>%
-    mutate(m = as.yearmon(datesubmitted)) %>%
-    mutate(online = factor(online))
+    mutate(datesubmitted = as.Date(datesubmitted),
+           m = as.yearmon(datesubmitted),
+           online = factor(online))
 
 levels(permit_applications$online) <- c("In person", "Online")
 
-ggplot(data = permit_applications, aes(x = m)) +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_bar(aes(fill = factor(online)), position = "dodge", stat = "bin") +
-            scale_x_yearmon(breaks = unique(permit_applications$m)) +
-            labs(fill = NULL) +
-            xlab("Month") +
-            ylab("Applications") +
-            ggtitle("Safety and Permits: Applications submitted by month")
+plot_data <- permit_applications %>%
+    group_by(online, m) %>%
+    summarize(total = n())
 
+# Generate plot
+ggplot(data = plot_data, aes(x = m, y = total)) +
+    geom_bar(aes(fill = factor(online)), position = "dodge", stat = "identity") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(fill = NULL) +
+    ggtitle("Safety and Permits: Applications submitted by month") + scale_fill_manual(values = stat_colors(2))
 
 ```
 
@@ -207,23 +319,25 @@ Source: LAMA; OPA database query
 
 ---
 
-```{r percent_online}
+The percentage of online applications continues to increase, due in part to declining in-person applications
 
+```{r sp_percent_online}
+
+# Filter for application types that can be submitted online
 plot_data <- permit_applications %>%
     filter(iswebapp == 1) %>%
     group_by(m) %>%
     summarize(perc_online = sum(online == "Online")/n() * 100)
 
+# Generate plot
 ggplot(data = plot_data, aes(x = m, y = perc_online)) +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            scale_x_yearmon(breaks = plot_data$m) +
-            labs(color = NULL) +
-            xlab("Month") +
-            ylab("Percent") +
-            ggtitle("Safety and Permits: Percent of permit applications submitted online")
-
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    ylab("Percent") +
+    ggtitle("Safety and Permits: Percent of permit applications submitted online") +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(7))
 
 ```
 
@@ -231,26 +345,42 @@ Source: LAMA; OPA database query
 
 ---
 
-```{r sp_permits_issued}
+Commercial permit issuances have been steady, while the number of residential permits has shown a slight decrease
 
-permits_issued <- read_excel("permits_issued.xlsx")
+```{r sp_res_comm_issued}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Safety and Permits/sp_permits_issued.sql"), collapse = "\t")
+    
+# Query database
+permits_issued <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
 
 names(permits_issued) <- tolower(names(permits_issued))
 
 permits_issued <- permits_issued %>%
-    mutate(m = as.yearmon(issuedate))
+    mutate(datesubmitted = as.Date(datesubmitted),
+           issuedate = as.Date(issuedate),
+           m = as.yearmon(issuedate))
 
+# Move "Residential" permits to first position on legend
 permits_issued$use <- relevel(factor(permits_issued$use), "Residential")
 
-ggplot(data = permits_issued, aes(x = m)) +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_bar(aes(fill = use), position = "dodge", stat = "bin") +
+plot_data <- permits_issued %>%
+    filter(use %in% c('Residential', 'Commercial')) %>%
+    group_by(use, m) %>%
+    summarize(total = n())
+
+ggplot(data = plot_data, aes(x = m, y = total)) +
+    geom_bar(aes(fill = use), position = "dodge", stat = "identity") +
             scale_x_yearmon(breaks = unique(permits_issued$m)) +
-            labs(fill = NULL) +
+            labs(fill = "Land use") +
             xlab("Month") +
             ylab("Permits") +
-            ggtitle("Safety and Permits: Permits issued by month")
+            ggtitle("Safety and Permits: Permits issued by month") + scale_fill_manual(values = stat_colors(2))
 
 ```
 
@@ -258,32 +388,97 @@ Source: LAMA; OPA database query
 
 ---
 
-```{r sp_days_to_issue}
+Time to issue commercial and residential permits has increased slightly over the past two years
+
+```{r sp_res_comm_days_to_issue}
+
+permits_issued$use <- relevel(factor(permits_issued$use), "Commercial")
 
 daystoissue <- permits_issued %>%
+    filter(use %in% c('Residential', 'Commercial')) %>%
+    filter(daystoissue >= 0) %>%
     group_by(use, m) %>%
     summarize(mean = mean(daystoissue))
-
-target <- 15
 
 plot_data <- daystoissue
 
 ggplot(data = plot_data, aes(x = m, y = mean, color = factor(use))) +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            geom_line(aes(y = target), linetype = 2) +
-            scale_x_yearmon(breaks = plot_data$m) +
-            labs(color = NULL) +
-            xlab("Month") +
-            ylab("Days") +
-            ggtitle("Safety and Permits: Mean days to issue permit")
+    geom_line(size = 1.5) +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    xlab("Month") +
+    ylab("Days") +
+    ggtitle("Safety and Permits: Mean days to issue permit") +
+    scale_color_manual(values = stat_colors(2)) +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(6))
 
 ```
 
 Source: LAMA; OPA database query
 
 ---
+
+Issuance of event and unknown/other permit types has risen over the past two years
+
+```{r sp_event_issued}
+
+# Move "Residential" permits to first position on legend
+permits_issued$use <- relevel(factor(permits_issued$use), "Event")
+
+plot_data <- permits_issued %>%
+    filter(!(use %in% c('Residential', 'Commercial'))) %>%
+    group_by(use, m) %>%
+    summarize(total = n())
+
+ggplot(data = plot_data, aes(x = m, y = total)) +
+    geom_bar(aes(fill = use), position = "dodge", stat = "identity") +
+            scale_x_yearmon(breaks = unique(permits_issued$m)) +
+            labs(fill = "Land use") +
+            xlab("Month") +
+            ylab("Permits") +
+            ggtitle("Safety and Permits: Permits issued by month") + scale_fill_manual(values = stat_colors(2))
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+Time to issue events permits has varied considerably
+
+```{r sp_event_days_to_issue}
+
+permits_issued$use <- relevel(factor(permits_issued$use), "Commercial")
+
+daystoissue <- permits_issued %>%
+    filter(!(use %in% c('Residential', 'Commercial'))) %>%
+    filter(daystoissue >= 0) %>%
+    group_by(use, m) %>%
+    summarize(mean = mean(daystoissue))
+
+plot_data <- daystoissue
+
+ggplot(data = plot_data, aes(x = m, y = mean, color = factor(use))) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0)) +
+    geom_line(size = 1.5) +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    xlab("Month") +
+    ylab("Days") +
+    ggtitle("Safety and Permits: Mean days to issue permit") +
+    scale_color_manual(values = stat_colors(2)) +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(7))
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+Percentage of building permits issued within one day appears to have fallen, but is still above 40 percent
 
 ```{r sp_building_permits}
 
@@ -295,14 +490,12 @@ building_permits <- permits_issued %>%
 plot_data <- building_permits
 
 ggplot(data = plot_data, aes(x = m, y = perc_in_target)) +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1),
-                  plot.title = element_text(hjust = 0)) +
-            geom_line(size = 1.5) +
-            scale_x_yearmon(breaks = plot_data$m) +
-            labs(color = NULL) +
-            xlab("Month") +
-            ylab("Percent") +
-            ggtitle("Safety and Permits: Percentage of building permits issued within one day")
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    ylab("Percent") +
+    ggtitle("Safety and Permits: Percentage of building permits issued within one day") +
+    expand_limits(y = 0)
 
 ```
 
@@ -310,16 +503,30 @@ Source: LAMA; OPA database query
 
 ---
 
+Time to complete zoning inspections for business licenses has been within target since November
+
 ```{r sp_business_license_inspections}
 
-license_inspections <- read_excel("business_license_inspections.xlsx")
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Safety and Permits/sp_business_license_inspections.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+license_inspections <- df
 
 names(license_inspections) <- tolower(names(license_inspections))
 
 target <- 7
 
 license_inspections <- license_inspections %>%
-    mutate(m = as.yearmon(dateinspected),
+    mutate(datefiled = as.Date(datefiled),
+           dateinspected = as.Date(dateinspected),
+           m = as.yearmon(dateinspected),
            in_target = factor(ifelse(daystoinspect <= target, "Seven days or fewer", "More than seven days")))
 
 license_inspections$in_target <- relevel(license_inspections$in_target, "Seven days or fewer")
@@ -329,14 +536,81 @@ plot_data <- license_inspections %>%
     summarize(mean = mean(daystoinspect))
 
 ggplot(data = plot_data, aes(x = m, y = mean)) +
-    geom_line(size = 1.5) +
-    geom_line(aes(y = target), linetype = 2) +
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    xlab("Month") +
+    ylab("Days") +
+    ggtitle("Safety and Permits: Mean days to complete business license zoning inspections") +
+    expand_limits(y = 0) +
+    scale_y_continuous(breaks = pretty_breaks(5))
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+The vast majority of business license zoning inspections are completed within seven days
+
+```{r sp_business_license_inspections_by_time}
+
+plot_data <- license_inspections %>%
+    group_by(in_target, m) %>%
+    summarize(total = n())
+
+ggplot(data = plot_data, aes(x = m, y = total, fill = in_target)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(fill = NULL) +
+    xlab("Month") +
+    ylab("Inspections") +
+    ggtitle("Safety and Permits: Business license inspections by time elapsed from application") +
+    scale_fill_manual(values = stat_colors(2))
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+Outliers have pushed up the average time to issue HDLC permits, but median time to issue has been less than one day
+
+```{r hdlc_permits_issued}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Historic District Landmarks Commission/hdlc_permits_issued.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+permits_issued <- df
+
+names(permits_issued) <- tolower(names(permits_issued))
+
+permits_issued <- permits_issued %>%
+    mutate(datecreated = as.Date(datecreated),
+           dateissued = as.Date(dateissued),
+           m = as.yearmon(dateissued))
+
+plot_data <- permits_issued %>%
+    group_by(m) %>%
+    summarize(mean = mean(daystoissue), median = median(daystoissue))
+
+ggplot(data = plot_data, aes(x = m)) +
+    geom_line(aes(y = mean, color = "Mean"), size = 1.5) +
+    geom_line(aes(y = median, color = "Median"), size = 1.5) +
     scale_x_yearmon(breaks = plot_data$m) +
     labs(color = NULL) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
     xlab("Month") +
     ylab("Days") +
-    ggtitle("Safety and Permits: Mean days to complete business license zoning inspections")
+    ggtitle("Historic District Landmarks Commission: Days to issue permit") +
+    scale_color_manual(values = stat_colors(2))
 
 ```
 
@@ -344,75 +618,103 @@ Source: LAMA; OPA database query
 
 ---
 
-```{r}
+The majority of staff-approvable HDLC permits are issued within three days
 
-plot_data <- license_inspections
+```{r hdlc_permits_by_time_to_issue}
 
-ggplot(data = plot_data, aes(x = m, fill = in_target)) +
+target <- 3
+
+permits_issued <- permits_issued %>%
+    mutate(m = as.yearmon(dateissued),
+           in_target = factor(ifelse(daystoissue <= target, "Three days or fewer", "More than three days")))
+
+permits_issued$in_target <- relevel(permits_issued$in_target, "Three days or fewer")
+
+plot_data <- permits_issued %>%
+    group_by(in_target, m) %>%
+    summarize(total = n())
+
+ggplot(data = plot_data, aes(x = m, y = total, fill = in_target)) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(position = "dodge", stat = "bin") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    scale_x_yearmon(breaks = plot_data$m) +
     labs(fill = NULL) +
-    xlab("Inspections") +
-    ylab("Month") +
-    ggtitle("Safety and Permits: Business license inspections by time elapsed from application")
-
-```
-
-Source: LAMA; OPA database query
-
----
-
-```{r hdlc_permits_issued}
-
-permits_issued <- read_excel("hdlc_permits_issued.xlsx")
-
-names(permits_issued) <- tolower(names(permits_issued))
-
-permits_issued <- permits_issued %>%
-    mutate(m = as.yearmon(dateissued))
-
-permits_issued <- permits_issued %>%
-    group_by(m) %>%
-    summarize(mean = mean(daystoissue), median = median(daystoissue))
-
-ggplot(data = permits_issued, aes(x = m)) +
-    geom_line(aes(y = mean, color = "Mean"), size = 1.5) +
-    geom_line(aes(y = median, color = "Median"), size = 1.5) +
-    scale_x_yearmon(breaks = permits_issued$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
     xlab("Month") +
-    ylab("Days") +
-    ggtitle("Historic District Landmarks Commission: Days to issue staff-approvable permits")
+    ylab("Permits") +
+    ggtitle("HDLC: Permits by time to issue") +
+    scale_fill_manual(values = stat_colors(2))
 
 ```
 
 Source: LAMA; OPA database query
 
 ---
+
+VCC staff have been working to update the LAMA event flow for permit issuance
 
 ```{r vcc_permits_issued}
 
-permits_issued <- read_excel("vcc_permits_issued.xlsx")
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Vieux Carre Commission/vcc_permits_issued.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+permits_issued <- df
 
 names(permits_issued) <- tolower(names(permits_issued))
 
 permits_issued <- permits_issued %>%
-    mutate(m = as.yearmon(dateissued))
+    mutate(datesubmitted = as.Date(datesubmitted),
+           dateissued = as.Date(dateissued),
+           m = as.yearmon(dateissued))
 
-permits_issued <- permits_issued %>%
+plot_data <- permits_issued %>%
     group_by(m) %>%
     summarize(mean = mean(daystoissue))
 
-ggplot(data = permits_issued, aes(x = m, y = mean)) +
-    geom_line(size = 1.5) +
-    scale_x_yearmon(breaks = permits_issued$m) +
+ggplot(data = plot_data, aes(x = m, y = mean)) +
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
     labs(color = NULL) +
+    ggtitle("Vieux Carre Commission: Mean days to issue staff-approvable permits") +
+    expand_limits(y = 0)
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+The vast majority of staff-approvable VCC permits are also issued within three days
+
+```{r vcc_permits_by_time_to_issue}
+
+target <- 3
+
+permits_issued <- permits_issued %>%
+    mutate(m = as.yearmon(dateissued),
+           in_target = factor(ifelse(daystoissue <= target, "Three days or fewer", "More than three days")))
+
+permits_issued$in_target <- relevel(permits_issued$in_target, "Three days or fewer")
+
+plot_data <- permits_issued %>%
+    group_by(in_target, m) %>%
+    summarize(total = n())
+
+ggplot(data = plot_data, aes(x = m, y = total, fill = in_target)) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(fill = NULL) +
     xlab("Month") +
-    ylab("Days") +
-    ggtitle("Vieux Carre Commission: Mean days to issue staff-approvable permits")
+    ylab("Permits") +
+    ggtitle("VCC: Permits by time to issue") +
+    scale_fill_manual(values = stat_colors(2))
 
 ```
 
@@ -422,9 +724,21 @@ Source: LAMA; OPA database query
 
 ---
 
-```{r}
+Median wait time for any license or permit queue has been above target since January but is trending back down
 
-oss <- read_excel("oss.xlsx")
+```{r oss}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=CNO-SQLCST01;Database=lobbyCentral")
+    
+query <- paste(readLines(con = "P:/Safety and Permits/oss_wait_service_times.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+oss <- df
 
 names(oss) <- tolower(names(oss))
 oss$queue <- tolower(oss$queue)
@@ -432,7 +746,10 @@ oss$queue <- tolower(oss$queue)
 oss <- oss %>%
     filter(waittime >= 0 & waittime <= 480,
            servicetime >= 0 & servicetime <= 480) %>%
-    mutate(m = as.yearmon(arrived))
+    mutate(arrived = as.POSIXct(arrived),
+           assisted = as.POSIXct(assisted),
+           departed = as.POSIXct(departed),
+           m = as.yearmon(arrived))
 
 # Consolidate queues into larger categories if needed
 taxi_queues <- c("brake tag",
@@ -446,55 +763,60 @@ taxi_queues <- c("brake tag",
 any_lic_perm_wait <- oss %>%
     filter(grepl("license|permit", queue)) %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 build_perm_wait <- oss %>%
     filter(queue == "building permit") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 occ_lic_wait <- oss %>%
     filter(queue == "occup. license") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 payment_wait <- oss %>%
     filter(queue == "payment") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 taxi_wait <- oss %>%
     filter(queue %in% taxi_queues) %>%
     group_by(m) %>%
-    summarize(mean_wait_time = mean(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 ```
 
-```{r}
+```{r oss_any_lic_perm}
 
-target <- 12
+lobby_central_plot <- function(x, title) {
 
-plot_data <- any_lic_perm_wait
+plot_data <- x
 
 p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    geom_line(aes(y = target), linetype = 2) +
+    geom_line(size = 1.5, color = "#005983") +
     scale_x_yearmon(breaks = plot_data$m) +
     labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
+    ggtitle("Median wait time (minutes)") +
+    scale_y_continuous(breaks = pretty_breaks(4))
 
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
+p2 <- ggplot(data = plot_data, aes(x = m, y = med_service_time)) +
+    geom_line(size = 1.5, color = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    ggtitle("Median service time (minutes)") +
+    scale_y_continuous(breaks = pretty_breaks(4))
+
+p3 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
+    geom_bar(stat = "identity", fill = "#005983") +
     scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
+    ggtitle("Customers")
 
-grid.arrange(p1, p2, ncol = 1, top = "One Stop Shop: Any license or permit queue")
+grid.arrange(p1, p2, p3, ncol = 1, top = title)
+
+}
+
+lobby_central_plot(any_lic_perm_wait, "One Stop Shop: Any license or permit queue")
 
 ```
 
@@ -502,31 +824,11 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Median wait time for the building permit queue has been above target since March but is trending back down
 
-target <- 18
+```{r oss_building_permit_queue}
 
-plot_data <- build_perm_wait
-
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    geom_line(aes(y = target), linetype = 2) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "One Stop Shop: Building permit queue")
+lobby_central_plot(build_perm_wait, "One Stop Shop: Building permit queue")
 
 ```
 
@@ -534,31 +836,11 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Median wait time for the occupational license queue has been above target since March but is also trending back down
 
-target <- 18
+```{r oss_occupational_license_queue}
 
-plot_data <- occ_lic_wait
-
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    geom_line(aes(y = target), linetype = 2) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "One Stop Shop: Occupational license queue")
+lobby_central_plot(occ_lic_wait, "One Stop Shop: Occupational license queue")
 
 ```
 
@@ -566,41 +848,31 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Payment wait times have recently been within target
 
-target <- 5
+```{r oss_payment_queue}
 
-plot_data <- payment_wait
-
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    geom_line(aes(y = target), linetype = 2) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "One Stop Shop: Payment queue")
+lobby_central_plot(payment_wait, "One Stop Shop: Payment queue")
 
 ```
 
 Source: LobbyCentral; OPA database query
 
-## Revenue
+## Bureau of Revenue
 
-```{r}
+```{r revenue}
 
-revenue <- read_excel("revenue.xlsx")
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=CNO-SQLCST01;Database=lobbyCentral")
+    
+query <- paste(readLines(con = "P:/Revenue/revenue_wait_service_times.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+revenue <- df
 
 names(revenue) <- tolower(names(revenue))
 revenue$type <- tolower(revenue$type)
@@ -608,61 +880,47 @@ revenue$type <- tolower(revenue$type)
 revenue <- revenue %>%
     filter(waittime >= 0 & waittime <= 480,
            servicetime >= 0 & servicetime <= 480) %>%
-    mutate(m = as.yearmon(arrived))
+    mutate(arrived = as.POSIXct(arrived),
+           assisted = as.POSIXct(assisted),
+           departed = as.POSIXct(departed),
+           m = as.yearmon(arrived))
 
 # Calculate performance measures
 
 abo <- revenue %>%
     filter(type == "abo") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 accounts <- revenue %>%
     filter(type == "accounts") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 administration <- revenue %>%
     filter(type == "administration") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 business <- revenue %>%
     filter(type == "business") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 enforcement_events <- revenue %>%
     filter(type == "enforcement/special events") %>%
     group_by(m) %>%
-    summarize(med_wait_time = median(waittime), customers = n())
+    summarize(med_wait_time = median(waittime), med_service_time = median(servicetime), customers = n())
 
 ```
 
 ---
 
-```{r}
+Wait times for ABO-related queues have been rising, possibly in line with seasonal volume
 
-plot_data <- abo
+```{r revenue_abo_queues}
 
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "Revenue: ABO queues")
+lobby_central_plot(abo, "Revenue: ABO queues")
 
 ```
 
@@ -670,28 +928,11 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Median wait time for account-related queues has varied around five minutes
 
-plot_data <- accounts
+```{r revenue_account_queues}
 
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "Revenue: Account queues")
+lobby_central_plot(accounts, "Revenue: Account queues")
 
 ```
 
@@ -699,28 +940,11 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Wait times for the business queue have been held to five minutes or less since June 2015
 
-plot_data <- business
+```{r revenue_business_license_queues}
 
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "Revenue: Business queue")
+lobby_central_plot(business, "Revenue: Business license queue")
 
 ```
 
@@ -728,29 +952,141 @@ Source: LobbyCentral; OPA database query
 
 ---
 
-```{r}
+Wait times for the enforcement and special events queue fell in May, possibly due to seasonal fluctuations
 
-plot_data <- enforcement_events
+```{r revenue_delinquent_events_queue}
 
-p1 <- ggplot(data = plot_data, aes(x = m, y = med_wait_time)) +
-    geom_line(size = 1.5) +
-    scale_x_yearmon(breaks = plot_data$m) +
-    labs(color = NULL) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    xlab("Month") +
-    ylab("Minutes") +
-    ggtitle("Median wait time")
-
-p2 <- ggplot(data = plot_data, aes(x = m, y = customers)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
-    geom_bar(stat = "identity") +
-    scale_x_yearmon(breaks = unique(plot_data$m)) +
-    xlab("Month") +
-    ylab("Customers") +
-    ggtitle("Volume")
-
-grid.arrange(p1, p2, ncol = 1, top = "Revenue: Enforcement and special events queue")
+lobby_central_plot(enforcement_events, "Revenue: Delinquent taxes and special events queue")
 
 ```
 
 Source: LobbyCentral; OPA database query
+
+## Violations
+
+---
+
+Median time to inspect building violations has varied around one day
+
+```{r sp_building_violations}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Safety and Permits/sp_compliance.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+violation_inspections <- df
+
+names(violation_inspections) <- tolower(names(violation_inspections))
+
+violation_inspections <- violation_inspections %>%
+    filter(category != "Other") %>%
+    filter(daystoinspect >= 0) %>%
+    mutate(filingdate = as.Date(filingdate),
+           inspectiondate = as.Date(inspectiondate),
+           m = as.yearmon(inspectiondate)) %>%
+    group_by(category, m) %>%
+    summarize(mean = mean(daystoinspect), median = median(daystoinspect))
+
+plot_data <- violation_inspections %>% filter(category == "Building")
+target <- 5
+
+ggplot(data = plot_data, aes(x = m)) +
+    geom_line(aes(y = mean, color = "Mean"), size = 1.5) +
+    geom_line(aes(y = median, color = "Median"), size = 1.5) +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
+    xlab("Month") +
+    ylab("Days") +
+    ggtitle("Safety and Permits: Time from creation of building violation case to inspection") +
+    scale_color_manual(values = stat_colors(2))
+
+```
+
+Source: LAMA; OPA database query
+
+---
+
+Median time to inspect zoning violations has also varied around one day
+
+```{r sp_zoning_violations}
+
+plot_data <- violation_inspections %>% filter(category == "Zoning")
+target <- 7
+
+ggplot(data = plot_data, aes(x = m)) +
+    geom_line(aes(y = mean, color = "Mean"), size = 1.5) +
+    geom_line(aes(y = median, color = "Median"), size = 1.5) +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(color = NULL) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0)) +
+    xlab("Month") +
+    ylab("Days") +
+    ggtitle("Safety and Permits: Time from creation of zoning violation case to inspection") +
+    scale_color_manual(values = stat_colors(2))
+
+```
+
+Source: LAMA; OPA database query
+
+## Taxi and For-Hire Bureau
+
+---
+
+Vehicle inspections appear to be slightly ahead of prior-year trends for May
+
+```{r taxi_vehicle_inspections}
+
+channel <- odbcDriverConnect(connection = "Driver={SQL Server};Server=cno-sqlreport01;Database=Lama_Rpt")
+    
+query <- paste(readLines(con = "P:/Taxicab and For-Hire Bureau/vehicle_inspections.sql"), collapse = "\t")
+    
+# Query database
+df <- sqlQuery(channel, query, as.is = TRUE)
+    
+# Close database connection
+close(channel)
+
+vehicle_inspections <- df
+
+names(vehicle_inspections) <- tolower(names(vehicle_inspections))
+
+vehicle_inspections <- vehicle_inspections %>%
+    mutate(dateinspected = as.Date(dateinspected),
+           m = as.yearmon(dateinspected))
+           
+plot_data <- vehicle_inspections %>%
+    group_by(m) %>%
+    summarize(total = n())
+
+# Generate plot
+ggplot(data = plot_data, aes(x = m, y = total)) +
+    geom_bar(stat = "identity", fill = "#005983") +
+    scale_x_yearmon(breaks = plot_data$m) +
+    labs(fill = NULL) +
+    ggtitle("Taxi and For-Hire Bureau: Vehicle inspections conducted")
+
+```
+
+Note: Licenses generally come up for renewal in June and December.
+Source: LAMA; OPA database query
+
+---
+
+Taxi and For-Hire Bureau wait times have been within target since April 2015
+
+```{r oss_taxi_queues}
+
+lobby_central_plot(taxi_wait, "One Stop Shop: Taxi and For-Hire queues")
+
+```
+
+Source: LobbyCentral; OPA database query
+
+## Questions
